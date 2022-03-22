@@ -10,7 +10,7 @@
 
 We contribute the first real-world RSC dataset BS-RSC with various motions collected by a well-designed beam-splitter acquisition system, bridging the gap for real-world RSC tasks.
 
-[[Download](www.baidu.com)]
+[[Download](https://drive.google.com/file/d/1Yp0kZJ6LGBmt1_kx92PtXaoJo6W2r9mW/view?usp=sharing)]
 
 ## Adaptive Warping
 
