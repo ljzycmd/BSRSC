@@ -1,0 +1,98 @@
+name: 000_AdaRSCNet_lr2e4_BSRSC_e401_B1G4
+
+dataset:
+    train:
+        name: BSRSC
+        mode: train
+        time_map: True
+
+        sampling: n_c  # "n_n" and "n_c" , "n_l", "n_r"
+        overlapping: True
+        interval: 1
+        pos: middle  # first
+        
+        root_gt: ./dataset/BSRSC/train
+        num_frames: 3
+        
+        # augmentations
+        augmentation:
+            RandomCrop: 
+                size : [480, 256]
+            RandomHorizontalFlip: 
+                p: 0.5
+            RandomVerticalFlip: 
+                p: 0.5
+            # RandomRotation90: 
+            #     p: 0.5
+
+        # dataloader per GPU
+        loader:
+            batch_size: 1
+            num_workers: 1
+
+    val:
+        name: BSRSC
+        mode: val
+        time_map: True
+        
+        sampling: n_c  # "n_n" and "n_c" , "n_l", "n_r"
+        overlapping: True
+        interval: 1
+        pos: middle  # first
+        
+        root_gt: ./dataset/BSRSC/val
+        num_frames: 3
+
+        loader:
+            batch_size: 1
+            num_workers: 1
+
+
+meta_arch: RSCArch
+model:
+    name: AdaRSCNet
+    in_channels: 3
+    inner_channels: 32
+    out_channels: 3
+    num_frames: 3
+    num_flow: 9
+    multi_scale_loss: False
+
+loss: 
+    criterion:
+    - name: CharbonnierLoss
+    - name: PerceptualLossVGG19
+    - name: VariationLoss
+      nc: 54
+    
+    weights: 
+    - 1.0
+    - 0.01
+    - 0.001
+
+schedule:
+    epochs: 401
+    val_epochs: 20
+    
+    optimizer:
+        name: Adam
+        lr: 0.0002
+        betas: [0.9, 0.99]
+        weight_decay: 0
+        
+    lr_scheduler:
+        name: CosineAnnealingLR
+        T_max: 400
+        eta_min: 1.0e-7
+
+
+logging: 
+    period: 20
+
+ckpt:
+    period: 1
+
+
+work_dir: ./workdir/adarscnet/bsrsc
+resume_from: None
+# init_mode: True

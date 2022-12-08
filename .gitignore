@@ -1,0 +1,15 @@
+# install information
+*.egg
+*__pycache__
+build
+*.egg-info
+dist
+*.so
+
+
+# workding directory
+workdir
+
+# dataset
+dataset/BSRSC
+dataset/FastecRS
