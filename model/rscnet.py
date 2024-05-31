@@ -288,7 +288,10 @@ class FlowGenerator(nn.Module):
         masks = None
         feats = None
         for i, x in enumerate([x2, x1, x0]):
-            ref_feats = torch.cat([x[:, self.ref_idx], x[:, self.ref_idx+1], x[:, self.ref_idx]], dim=0)  # (BN, C, H, W)
+            if N > 1:
+                ref_feats = torch.cat([x[:, self.ref_idx], x[:, self.ref_idx+1], x[:, self.ref_idx]], dim=0)  # (BN, C, H, W)
+            else:
+                ref_feats = x.flatten(0, 1)  # (BN, C, H, W)
             ngr_feats = x.flatten(0, 1)  # neighboring features (BN, C, H, W)
             flows, masks, feats = self.motion_net[i](ref_feats, ngr_feats, base_flow=flows, base_feature=feats)
             BN, C, NF, H, W = flows.shape
@@ -302,11 +305,12 @@ class FlowGenerator(nn.Module):
 class FusionNet(nn.Module):
     def __init__(self, in_channels=32, md=4, num_flow=2, num_frames=3, refer_idx=None, modulation=True, *args, **kwargs):
         super().__init__()
+        self.num_frames = num_frames
         self.flow_generator = FlowGenerator(in_channels=in_channels, md=md, num_flow=num_flow, refer_idx=refer_idx)
         self.warper = nn.ModuleList([
-                nn.ModuleList([AdaWarp(in_channels * 4, num_flow=num_flow, kernel_size=kwargs["kernel_size"]) for _ in range(3)]),
-                nn.ModuleList([AdaWarp(in_channels * 2, num_flow=num_flow, kernel_size=kwargs["kernel_size"]) for _ in range(3)]),
-                nn.ModuleList([AdaWarp(in_channels, num_flow=num_flow, kernel_size=kwargs["kernel_size"]) for _ in range(3)])
+                nn.ModuleList([AdaWarp(in_channels * 4, num_flow=num_flow, kernel_size=kwargs["kernel_size"]) for _ in range(num_frames)]),
+                nn.ModuleList([AdaWarp(in_channels * 2, num_flow=num_flow, kernel_size=kwargs["kernel_size"]) for _ in range(num_frames)]),
+                nn.ModuleList([AdaWarp(in_channels, num_flow=num_flow, kernel_size=kwargs["kernel_size"]) for _ in range(num_frames)])
         ])
 
         self.mf_fusion = nn.ModuleList([
@@ -341,7 +345,7 @@ class FusionNet(nn.Module):
             if time_map is not None:
                 time_map = F.interpolate(time_map.flatten(0, 1), size=(H, W)).reshape(B, N, -1, H, W)  # (B, N, 1, H, W)
                 flow = flow * time_map.unsqueeze(3)  # (B, N, 2, NF, H, W)
-            warped = torch.stack([self.warper[i][j](x[:, j], flow[:, j], mask[:, j]) for j in range(3)], dim=1) # (B, N, C, H, W)
+            warped = torch.stack([self.warper[i][j](x[:, j], flow[:, j], mask[:, j]) for j in range(self.num_frames)], dim=1) # (B, N, C, H, W)
             x_out.append(self.mf_fusion[i](warped.reshape(B, N*C, H, W).contiguous()))
 
         return x_out, (flows2.flatten(1, 3), flows1.flatten(1, 3), flows0.flatten(1, 3))
